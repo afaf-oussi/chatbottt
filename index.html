@@ -1,64 +1,83 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <title>Chatbot Step 3.5 Flash</title>
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        #chat-window { width: 450px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
-        #log { height: 350px; overflow-y: auto; padding: 15px; border-bottom: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; }
-        .msg { padding: 8px 12px; border-radius: 10px; font-size: 14px; max-width: 85%; }
-        .user { align-self: flex-end; background: #007bff; color: white; }
-        .bot { align-self: flex-start; background: #eee; }
-        .debug { font-size: 11px; color: #d9534f; background: #f9f2f4; padding: 5px; border-radius: 5px; border: 1px solid #d9534f; }
-        #controls { display: flex; padding: 10px; background: #fff; }
-        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
-        button { margin-left: 5px; padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        #chat-container { width: 100%; max-width: 500px; background: white; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; height: 90vh; }
+        #header { background: #007bff; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.2em; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
+        .msg { padding: 12px 16px; border-radius: 15px; font-size: 14px; max-width: 80%; line-height: 1.5; }
+        .user { align-self: flex-end; background: #007bff; color: white; border-bottom-right-radius: 2px; }
+        .bot { align-self: flex-start; background: #f1f0f0; color: #333; border-bottom-left-radius: 2px; }
+        .error-box { background: #fee2e2; color: #dc2626; border: 1px solid #f87171; padding: 10px; border-radius: 8px; font-size: 12px; margin: 10px; }
+        #input-area { display: flex; padding: 20px; border-top: 1px solid #eee; background: white; }
+        input { flex: 1; padding: 12px 18px; border: 1px solid #ddd; border-radius: 25px; outline: none; font-size: 14px; }
+        button { background: #007bff; color: white; border: none; padding: 0 25px; margin-left: 10px; border-radius: 25px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
-<div id="chat-window">
-    <div style="background:#007bff; color:white; padding:10px; text-align:center;">Diagnostic Step 3.5</div>
-    <div id="log"></div>
-    <div id="controls">
-        <input type="text" id="userInput" placeholder="Écrivez ici...">
-        <button id="btn">OK</button>
+<div id="chat-container">
+    <div id="header">Step 3.5 Flash Chat</div>
+    <div id="messages">
+        <div class="msg bot">Connexion établie. Je suis prêt à vous aider avec Step 3.5 Flash !</div>
+    </div>
+    <div id="input-area">
+        <input type="text" id="user-input" placeholder="Posez votre question...">
+        <button id="send-btn">Envoyer</button>
     </div>
 </div>
 
 <script>
-    // COLLEZ VOTRE CLÉ ICI (elle doit commencer par sk-or-v1-...)
-    const MY_KEY = "VOTRE_CLE_API_ICI"; 
+    // --- CONFIGURATION OBLIGATOIRE ---
+    // 1. Allez sur https://openrouter.ai/keys
+    // 2. Créez une clé et COLLEZ-LA CI-DESSOUS entre les guillemets
+    const API_KEY = "VOTRE_CLE_ICI_COMMENCANT_PAR_SK_OR"; 
 
-    const log = document.getElementById('log');
-    const input = document.getElementById('userInput');
-    const btn = document.getElementById('btn');
+    const messagesDiv = document.getElementById('messages');
+    const inputField = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
 
-    function print(role, text, isDebug = false) {
-        const d = document.createElement('div');
-        d.className = isDebug ? 'debug' : `msg ${role}`;
-        d.innerText = text;
-        log.appendChild(d);
-        log.scrollTop = log.scrollHeight;
+    function addMessage(role, content) {
+        const div = document.createElement('div');
+        div.className = `msg ${role}`;
+        div.innerText = content;
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    async function startChat() {
-        const text = input.value.trim();
+    function addError(errObj) {
+        const div = document.createElement('div');
+        div.className = 'error-box';
+        div.innerText = "Erreur " + errObj.code + " : " + errObj.message;
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    async function callAPI() {
+        const text = inputField.value.trim();
         if (!text) return;
 
-        print('user', text);
-        input.value = "";
-        btn.disabled = true;
+        if (API_KEY.includes("VOTRE_CLE")) {
+            alert("Erreur : Vous devez coller votre clé API OpenRouter dans le code !");
+            return;
+        }
+
+        addMessage('user', text);
+        inputField.value = "";
+        sendBtn.disabled = true;
 
         try {
-            const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${MY_KEY}`,
                     "Content-Type": "application/json",
-                    "HTTP-Referer": window.location.origin // Requis par OpenRouter
+                    "Authorization": "Bearer " + API_KEY.trim(), // Utilisation de .trim() pour éviter les espaces
+                    "X-Title": "Mon Chatbot" // Optionnel mais recommandé par OpenRouter
                 },
                 body: JSON.stringify({
                     "model": "stepfun/step-3.5-flash:free",
@@ -66,24 +85,24 @@
                 })
             });
 
-            const data = await resp.json();
+            const data = await response.json();
 
             if (data.error) {
-                // Affiche l'erreur RÉELLE renvoyée par OpenRouter
-                print('bot', "Détails de l'erreur :", true);
-                print('bot', JSON.stringify(data.error), true);
+                addError(data.error);
             } else {
-                print('bot', data.choices[0].message.content);
+                const reply = data.choices[0].message.content;
+                addMessage('bot', reply);
             }
-        } catch (e) {
-            print('bot', "Erreur réseau/navigateur : " + e.message, true);
+        } catch (err) {
+            addError({code: "Réseau", message: err.message});
         } finally {
-            btn.disabled = false;
+            sendBtn.disabled = false;
         }
     }
 
-    btn.onclick = startChat;
-    input.onkeypress = (e) => { if(e.key === 'Enter') startChat(); };
+    sendBtn.onclick = callAPI;
+    inputField.onkeypress = (e) => { if (e.key === 'Enter') callAPI(); };
 </script>
+
 </body>
 </html>
